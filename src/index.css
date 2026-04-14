@@ -57,13 +57,12 @@ body {
 .header h1 span {
   color: var(--primary);
 }
-
 .main-layout {
-  display: grid;
-  grid-template-columns: 1fr 320px;
+  display: flex;
   gap: 24px;
   flex: 1;
   min-height: 0;
+  transition: all 0.3s ease;
 }
 
 .viz-canvas {
@@ -74,15 +73,133 @@ body {
   position: relative;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.05);
+  flex: 1;
+}
+
+.sidebar {
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+  transition: transform 0.3s ease, width 0.3s ease;
+}
+
+.sidebar.collapsed {
+  width: 0;
+  transform: translateX(100%);
+  margin-left: -24px;
+}
+
+.bar.higher {
+  background-color: #ef4444; /* red for higher than compare value */
+}
+
+.bar.lower {
+  background-color: #10b981; /* green for lower than compare value */
+}
+
+.speed-presets {
+  display: flex;
+  gap: 8px;
+}
+
+.speed-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid var(--outline);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--on-surface-variant);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.speed-btn.active {
+  background-color: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.overlay-panel {
+  background: var(--surface-high);
+  border-radius: var(--radius-lg);
+  width: 500px;
+  max-width: 90vw;
+  padding: 32px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.inversion-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.inversion-line {
+  stroke: var(--primary);
+  stroke-width: 1;
+  stroke-dasharray: 4;
+  opacity: 0.3;
+}
+
+.inversion-mode-toggle {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 10;
+}
+
+.preset-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.preset-btn {
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  background: var(--surface-low);
+  border: 1px solid var(--outline);
+  color: var(--on-surface);
+  cursor: pointer;
+}
+
+.preset-btn:hover {
+  background: var(--surface-highest);
 }
 
 .canvas-area {
-  flex: 1;
   display: flex;
   align-items: flex-end;
   justify-content: center;
   padding: 40px;
   gap: 4px;
+  flex: 1;
 }
 
 .bar {
