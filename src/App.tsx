@@ -325,33 +325,6 @@ export default function App() {
 
       <main className="main-layout">
         <section className="viz-canvas">
-          {isInversionMode && (
-            <svg className="inversion-canvas">
-              {allInversions.map(([i, j], idx) => {
-                const len = currentState.array.length;
-                const stepWidth = 100 / len;
-                const x1 = (i * stepWidth) + (stepWidth / 2);
-                const x2 = (j * stepWidth) + (stepWidth / 2);
-                
-                const val1 = currentState.array[i];
-                const val2 = currentState.array[j];
-                const maxVal = Math.max(...currentState.array, 1);
-                const y1 = 100 - ((val1 / maxVal) * 70 + 10) - 5; 
-                const y2 = 100 - ((val2 / maxVal) * 70 + 10) - 5;
-
-                return (
-                  <motion.path
-                    key={`inv-${i}-${j}-${idx}`}
-                    initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: 0.6 }}
-                    d={`M ${x1}% ${y1}% Q ${(x1 + x2) / 2}% ${Math.min(y1, y2) - 20}% ${x2}% ${y2}%`}
-                    className="inversion-line"
-                  />
-                );
-              })}
-            </svg>
-          )}
-
           <div className="canvas-area">
             {currentState.array.map((val, idx) => {
               const isPivot = (idx === currentState.compareIndex + 1 && currentState.isMoving);
@@ -627,6 +600,74 @@ export default function App() {
               <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
                 <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setIsConfigOverlayOpen(false)}>Close and Preview</button>
                 <button className="btn" style={{ flex: 1, background: 'var(--surface-low)' }} onClick={() => generateRandomArray(arraySize)}>Regenerate Random</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Visual Inversions Overlay */}
+      <AnimatePresence>
+        {isInversionMode && (
+          <div className="overlay">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="overlay-panel"
+              style={{ width: '90vw', maxWidth: '1000px', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <Eye className="primary-text" size={24} color="var(--primary)" />
+                  <h2 style={{ fontSize: '1.5rem', fontWeight: 700 }}>VISUAL INVERSIONS</h2>
+                </div>
+                <button className="btn" onClick={() => setIsInversionMode(false)}><X size={24} /></button>
+              </div>
+              <div style={{ flex: 1, position: 'relative', minHeight: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 0 }}>
+                  {allInversions.map(([i, j], idx) => {
+                    const len = currentState.array.length;
+                    const stepWidth = 100 / len;
+                    const x1 = (i * stepWidth) + (stepWidth / 2);
+                    const x2 = (j * stepWidth) + (stepWidth / 2);
+                    
+                    return (
+                      <motion.path
+                        key={`inv-overlay-${i}-${j}-${idx}`}
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        animate={{ pathLength: 1, opacity: 0.6 }}
+                        d={`M ${x1}% 60% Q ${(x1 + x2) / 2}% 0% ${x2}% 60%`}
+                        stroke="rgba(239, 68, 68, 0.4)"
+                        strokeWidth="2"
+                        fill="none"
+                      />
+                    );
+                  })}
+                </svg>
+                <div style={{ display: 'flex', width: '100%', justifyContent: 'space-between', zIndex: 1, position: 'relative' }}>
+                  {currentState.array.map((val, idx) => (
+                    <div key={idx} style={{ 
+                      flex: 1, 
+                      display: 'flex', 
+                      justifyContent: 'center', 
+                      alignItems: 'center', 
+                      padding: '8px 0',
+                      background: 'var(--surface-high)',
+                      margin: '0 2px',
+                      borderRadius: '4px',
+                      border: '1px solid var(--outline)',
+                      fontSize: '12px',
+                      fontWeight: 'bold',
+                      color: 'var(--on-surface)'
+                    }}>
+                      {val}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div style={{ marginTop: 16, fontSize: '14px', color: 'var(--on-surface-variant)', textAlign: 'center' }}>
+                Arcs denote values that are out of order (e.g. {allInversions.length > 0 ? `${currentState.array[allInversions[0][0]]} > ${currentState.array[allInversions[0][1]]}` : 'None'}). Total Inversions: {allInversions.length}
               </div>
             </motion.div>
           </div>
