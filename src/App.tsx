@@ -22,7 +22,8 @@ import {
   Plus,
   Minus,
   Code2,
-  Grid3X3
+  Grid3X3,
+  Terminal
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -67,9 +68,9 @@ export default function App() {
   const [isConfigOverlayOpen, setIsConfigOverlayOpen] = useState(false);
   const [isAllInversionsOpen, setIsAllInversionsOpen] = useState(false);
   const [isInversionMode, setIsInversionMode] = useState(false);
-  const [isMetricsOpen, setIsMetricsOpen] = useState(true);
-  const [isDetailsOpen, setIsDetailsOpen] = useState(true);
-  const [isCodeOpen, setIsCodeOpen] = useState(true);
+  const [isDebuggerMode, setIsDebuggerMode] = useState(true);
+  const [isMetricsOpen, setIsMetricsOpen] = useState(false);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   const timerRef = useRef<number | null>(null);
 
@@ -271,9 +272,6 @@ export default function App() {
   }
 
   const allInversions = getInversions(currentState.array);
-  const focusedInversions = allInversions.filter(
-    ([i, j]) => i === currentState.currentIndex || j === currentState.currentIndex
-  );
 
   const speedOptions = [0.5, 1, 2, 4, 8];
 
@@ -284,6 +282,15 @@ export default function App() {
   };
 
   const progressPercentage = Math.round((currentState.currentIndex / currentState.array.length) * 100);
+
+  const toggleDebuggerMode = () => {
+    const newMode = !isDebuggerMode;
+    setIsDebuggerMode(newMode);
+    if (newMode) {
+      setIsMetricsOpen(false);
+      setIsDetailsOpen(false);
+    }
+  };
 
   return (
     <div className="app-container">
@@ -298,10 +305,13 @@ export default function App() {
           </button>
         </div>
         <div className="playback-btns">
+          <button className={`btn ${isDebuggerMode ? 'btn-primary' : ''}`} onClick={toggleDebuggerMode} title={isDebuggerMode ? "Exit Debugger Mode" : "Enter Debugger Mode"}>
+            <Terminal size={20} />
+          </button>
           <button className="btn" onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} title={isSidebarCollapsed ? "Show Sidebar" : "Hide Sidebar"}>
             {isSidebarCollapsed ? <Maximize2 size={20} /> : <Minimize2 size={20} />}
           </button>
-          <button className="btn" onClick={() => setIsInversionMode(!isInversionMode)} title={isInversionMode ? "Hide HUD Inversions" : "Show HUD Inversions"}>
+          <button className="btn" onClick={() => setIsInversionMode(!isInversionMode)} title={isInversionMode ? "Hide Visual Inversions" : "Show Visual Inversions"}>
             {isInversionMode ? <EyeOff size={20} /> : <Eye size={20} />}
           </button>
           <button className="btn" onClick={() => generateRandomArray(arraySize)} title="Randomize">
@@ -315,49 +325,32 @@ export default function App() {
 
       <main className="main-layout">
         <section className="viz-canvas">
-          <AnimatePresence>
-            {isInversionMode && (
-              <motion.div 
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="inversion-hud"
-                style={{
-                  position: 'absolute',
-                  top: 24,
-                  right: 24,
-                  background: 'rgba(30, 30, 30, 0.85)',
-                  backdropFilter: 'blur(12px)',
-                  padding: 16,
-                  borderRadius: 'var(--radius-lg)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  zIndex: 20,
-                  maxWidth: 250,
-                  boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                  <Activity size={16} color="var(--tertiary)" />
-                  <h4 style={{ fontSize: '0.875rem', margin: 0, color: 'var(--on-surface)' }}>Focused Inversions</h4>
-                </div>
-                {focusedInversions.length > 0 ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {focusedInversions.map(([i, j], idx) => (
-                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', background: 'rgba(0,0,0,0.3)', padding: '6px 10px', borderRadius: 4 }}>
-                        <span style={{ color: 'var(--on-surface-variant)' }}>Val: {currentState.array[i]}</span>
-                        <span style={{ color: 'var(--tertiary)' }}>{'>'}</span>
-                        <span style={{ color: 'var(--on-surface-variant)' }}>Val: {currentState.array[j]}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div style={{ fontSize: '0.875rem', color: 'var(--on-surface-variant)', fontStyle: 'italic' }}>
-                    No active inversions for the current element.
-                  </div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {isInversionMode && (
+            <svg className="inversion-canvas">
+              {allInversions.map(([i, j], idx) => {
+                const len = currentState.array.length;
+                const stepWidth = 100 / len;
+                const x1 = (i * stepWidth) + (stepWidth / 2);
+                const x2 = (j * stepWidth) + (stepWidth / 2);
+                
+                const val1 = currentState.array[i];
+                const val2 = currentState.array[j];
+                const maxVal = Math.max(...currentState.array, 1);
+                const y1 = 100 - ((val1 / maxVal) * 70 + 10) - 5; 
+                const y2 = 100 - ((val2 / maxVal) * 70 + 10) - 5;
+
+                return (
+                  <motion.path
+                    key={`inv-${i}-${j}-${idx}`}
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: 0.6 }}
+                    d={`M ${x1}% ${y1}% Q ${(x1 + x2) / 2}% ${Math.min(y1, y2) - 20}% ${x2}% ${y2}%`}
+                    className="inversion-line"
+                  />
+                );
+              })}
+            </svg>
+          )}
 
           <div className="canvas-area">
             {currentState.array.map((val, idx) => {
@@ -450,89 +443,94 @@ export default function App() {
           </div>
         </section>
 
-        <aside className={`sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
-          <div className="panel">
-            <div className="panel-header" onClick={() => setIsCodeOpen(!isCodeOpen)}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Code2 size={16} />
-                <h3>Source Code</h3>
+        <aside className={`sidebar ${isSidebarCollapsed ? 'collapsed' : ''} ${isDebuggerMode ? 'debugger-mode' : ''}`}>
+          {isDebuggerMode && (
+            <div className="panel flex-grow">
+              <div className="panel-header">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Code2 size={16} />
+                  <h3>Debugger Source Code</h3>
+                </div>
               </div>
-              {isCodeOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              <div className="panel-content" style={{ display: 'flex', flexDirection: 'column' }}>
+                <div className="code-block">
+                  {CODE_LINES.map((line, idx) => (
+                    <div key={idx} className={`code-line ${currentState.activeLine === idx + 1 ? 'active' : ''}`}>
+                      <span className="line-number">{idx + 1}</span>
+                      {line}
+                    </div>
+                  ))}
+                </div>
+                <div className="vars-display">
+                  <div className="var-item">
+                    <span className="var-name">i</span>
+                    <span className="var-val">{currentState.currentIndex < currentState.array.length ? currentState.currentIndex : '-'}</span>
+                  </div>
+                  <div className="var-item">
+                    <span className="var-name">j</span>
+                    <span className="var-val">{currentState.compareIndex !== currentState.currentIndex ? Math.max(-1, currentState.compareIndex) : '-'}</span>
+                  </div>
+                  <div className="var-item">
+                    <span className="var-name">pivot</span>
+                    <span className="var-val">{currentState.currentPivot ?? '-'}</span>
+                  </div>
+                  <div className="var-item">
+                    <span className="var-name">arr[j]</span>
+                    <span className="var-val">{currentState.compareIndex >= 0 ? currentState.array[currentState.compareIndex] : '-'}</span>
+                  </div>
+                </div>
+              </div>
             </div>
-            <AnimatePresence>
-              {isCodeOpen && (
-                <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="panel-content">
-                  <div className="code-block">
-                    {CODE_LINES.map((line, idx) => (
-                      <div key={idx} className={`code-line ${currentState.activeLine === idx + 1 ? 'active' : ''}`}>
-                        <span style={{ opacity: 0.5, marginRight: 8, userSelect: 'none', display: 'inline-block', width: '20px' }}>{idx + 1}</span>
-                        {line}
+          )}
+
+          {!isDebuggerMode && (
+            <>
+              <div className="panel">
+                <div className="panel-header" onClick={() => setIsMetricsOpen(!isMetricsOpen)}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Activity size={16} />
+                    <h3>Metrics</h3>
+                  </div>
+                  {isMetricsOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </div>
+                <AnimatePresence>
+                  {isMetricsOpen && (
+                    <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="panel-content">
+                      <div className="metric-item">
+                        <span className="metric-label">Comparisons</span>
+                        <span className="metric-value">{currentState.comparisons}</span>
                       </div>
-                    ))}
-                  </div>
-                  <div className="vars-display">
-                    <div className="var-item">
-                      <span className="var-name">i</span>
-                      <span className="var-val">{currentState.currentIndex < currentState.array.length ? currentState.currentIndex : '-'}</span>
-                    </div>
-                    <div className="var-item">
-                      <span className="var-name">j</span>
-                      <span className="var-val">{currentState.compareIndex !== currentState.currentIndex ? Math.max(-1, currentState.compareIndex) : '-'}</span>
-                    </div>
-                    <div className="var-item">
-                      <span className="var-name">pivot</span>
-                      <span className="var-val">{currentState.currentPivot ?? '-'}</span>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          <div className="panel">
-            <div className="panel-header" onClick={() => setIsMetricsOpen(!isMetricsOpen)}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Activity size={16} />
-                <h3>Metrics</h3>
+                      <div className="metric-item">
+                        <span className="metric-label">Shifts (Swaps)</span>
+                        <span className="metric-value">{currentState.shifts}</span>
+                      </div>
+                      <div className="metric-item">
+                        <span className="metric-label">Total Inversions</span>
+                        <span className="metric-value">{currentState.inversions}</span>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
-              {isMetricsOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-            </div>
-            <AnimatePresence>
-              {isMetricsOpen && (
-                <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="panel-content">
-                  <div className="metric-item">
-                    <span className="metric-label">Comparisons</span>
-                    <span className="metric-value">{currentState.comparisons}</span>
-                  </div>
-                  <div className="metric-item">
-                    <span className="metric-label">Shifts (Swaps)</span>
-                    <span className="metric-value">{currentState.shifts}</span>
-                  </div>
-                  <div className="metric-item">
-                    <span className="metric-label">Total Inversions</span>
-                    <span className="metric-value">{currentState.inversions}</span>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
 
-          <div className="panel">
-            <div className="panel-header" onClick={() => setIsDetailsOpen(!isDetailsOpen)}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Info size={16} />
-                <h3>Live Logic</h3>
+              <div className="panel">
+                <div className="panel-header" onClick={() => setIsDetailsOpen(!isDetailsOpen)}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Info size={16} />
+                    <h3>Live Logic</h3>
+                  </div>
+                  {isDetailsOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </div>
+                <AnimatePresence>
+                  {isDetailsOpen && (
+                    <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="panel-content">
+                      <p className="step-explanation">{currentState.stepDescription}</p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
-              {isDetailsOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-            </div>
-            <AnimatePresence>
-              {isDetailsOpen && (
-                <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="panel-content">
-                  <p className="step-explanation">{currentState.stepDescription}</p>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+            </>
+          )}
         </aside>
       </main>
 
