@@ -232,7 +232,11 @@ export default function App() {
     );
   }
 
-  const inversions = getInversions(currentState.array);
+  // Filter inversions to only show the ones involving the current pivot element (currentIndex)
+  const allInversions = getInversions(currentState.array);
+  const focusedInversions = allInversions.filter(
+    ([i, j]) => i === currentState.currentIndex || j === currentState.currentIndex
+  );
 
   const speedOptions = [0.5, 1, 2, 4, 8];
 
@@ -271,27 +275,49 @@ export default function App() {
 
       <main className="main-layout">
         <section className="viz-canvas">
-          {isInversionMode && (
-            <svg className="inversion-canvas" style={{ zIndex: 10 }}>
-              {inversions.map(([i, j], idx) => {
-                const stepX = 100 / currentState.array.length;
-                const x1 = (i * stepX) + (stepX / 2);
-                const x2 = (j * stepX) + (stepX / 2);
-                return (
-                  <motion.path
-                    key={`inv-${idx}`}
-                    initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: 0.5 }}
-                    d={`M ${x1}% 85 Q ${(x1 + x2) / 2}% 20 ${x2}% 85`}
-                    fill="none"
-                    stroke="var(--primary)"
-                    strokeWidth="2"
-                    strokeDasharray="4"
-                  />
-                );
-              })}
-            </svg>
-          )}
+          <AnimatePresence>
+            {isInversionMode && (
+              <motion.div 
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="inversion-hud"
+                style={{
+                  position: 'absolute',
+                  top: 24,
+                  right: 24,
+                  background: 'rgba(30, 30, 30, 0.85)',
+                  backdropFilter: 'blur(12px)',
+                  padding: 16,
+                  borderRadius: 'var(--radius-lg)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  zIndex: 20,
+                  maxWidth: 250,
+                  boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <Activity size={16} color="var(--tertiary)" />
+                  <h4 style={{ fontSize: '0.875rem', margin: 0, color: 'var(--on-surface)' }}>Focused Inversions</h4>
+                </div>
+                {focusedInversions.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {focusedInversions.map(([i, j], idx) => (
+                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', background: 'rgba(0,0,0,0.3)', padding: '6px 10px', borderRadius: 4 }}>
+                        <span style={{ color: 'var(--on-surface-variant)' }}>Val: {currentState.array[i]}</span>
+                        <span style={{ color: 'var(--tertiary)' }}>{'>'}</span>
+                        <span style={{ color: 'var(--on-surface-variant)' }}>Val: {currentState.array[j]}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: '0.875rem', color: 'var(--on-surface-variant)', fontStyle: 'italic' }}>
+                    No active inversions for the current element.
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <div className="canvas-area">
             {currentState.array.map((val, idx) => {
