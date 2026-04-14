@@ -207,9 +207,15 @@ export default function App() {
 
   const currentState = history[step];
 
-  if (!currentState) return null;
+  if (!currentState) {
+    return (
+      <div className="app-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#121212' }}>
+        <h2 style={{ color: '#3b82f6', fontSize: '1.5rem', fontWeight: 800 }}>divide.</h2>
+      </div>
+    );
+  }
 
-  const inversions = useMemo(() => getInversions(currentState.array), [currentState.array]);
+  const inversions = getInversions(currentState.array);
 
   const handleCustomInput = (e: React.FormEvent) => {
     e.preventDefault();
@@ -241,7 +247,7 @@ export default function App() {
           <button className="btn" onClick={() => generateRandomArray(arraySize)} title="Randomize">
             <Shuffle size={20} />
           </button>
-          <button className="btn" onClick={() => resetWithArray(array)} title="Reset">
+          <button className="btn" onClick={() => resetWithArray(currentState.array)} title="Reset">
             <RotateCcw size={20} />
           </button>
         </div>
@@ -291,7 +297,7 @@ export default function App() {
                   layout
                   className={`bar ${statusClass}`}
                   style={{ 
-                    height: `${(val / Math.max(...array)) * 80 + 10}%`,
+                    height: `${(val / Math.max(...currentState.array)) * 80 + 10}%`,
                   }}
                 >
                   <span style={{ 
