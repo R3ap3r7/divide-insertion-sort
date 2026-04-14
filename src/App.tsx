@@ -625,7 +625,7 @@ export default function App() {
                 <button className="btn" onClick={() => setIsInversionMode(false)}><X size={24} /></button>
               </div>
               <div style={{ flex: 1, position: 'relative', minHeight: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 0 }}>
+                <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 0 }}>
                   {allInversions.map(([i, j], idx) => {
                     const len = currentState.array.length;
                     const stepWidth = 100 / len;
@@ -637,10 +637,11 @@ export default function App() {
                         key={`inv-overlay-${i}-${j}-${idx}`}
                         initial={{ pathLength: 0, opacity: 0 }}
                         animate={{ pathLength: 1, opacity: 0.6 }}
-                        d={`M ${x1}% 60% Q ${(x1 + x2) / 2}% 0% ${x2}% 60%`}
+                        d={`M ${x1} 60 Q ${(x1 + x2) / 2} 0 ${x2} 60`}
                         stroke="rgba(239, 68, 68, 0.4)"
-                        strokeWidth="2"
+                        strokeWidth="0.5"
                         fill="none"
+                        vectorEffect="non-scaling-stroke"
                       />
                     );
                   })}
