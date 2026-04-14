@@ -260,6 +260,96 @@ body {
   gap: 4px;
 }
 
+.code-block {
+  font-family: monospace;
+  font-size: 13px;
+  background: var(--surface-highest);
+  padding: 12px;
+  border-radius: var(--radius-md);
+  color: var(--on-surface);
+  line-height: 1.5;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.code-line {
+  padding: 2px 8px;
+  border-radius: 4px;
+  border-left: 2px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.code-line.active {
+  background: rgba(59, 130, 246, 0.2);
+  border-left-color: var(--primary);
+  color: #fff;
+  font-weight: bold;
+}
+
+.vars-display {
+  display: flex;
+  gap: 16px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--outline);
+}
+
+.var-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.var-name {
+  font-size: 10px;
+  color: var(--on-surface-variant);
+  text-transform: uppercase;
+}
+
+.var-val {
+  font-family: monospace;
+  font-size: 14px;
+  color: var(--primary);
+  font-weight: bold;
+}
+
+.inversions-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.inversion-row {
+  background: var(--surface-low);
+  padding: 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--outline);
+}
+
+.inversion-row-header {
+  font-weight: 600;
+  color: var(--primary);
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.inversion-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.inversion-tag {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
 .canvas-area {
   display: flex;
   align-items: flex-end;

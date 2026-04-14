@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { 
   Play, 
   Pause, 
@@ -20,7 +20,9 @@ import {
   SkipBack,
   SkipForward,
   Plus,
-  Minus
+  Minus,
+  Code2,
+  Grid3X3
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -28,16 +30,30 @@ type SortState = {
   array: number[];
   currentIndex: number;
   compareIndex: number;
-  pivotIndex: number;
   isMoving: boolean;
   stepDescription: string;
   comparisons: number;
   shifts: number;
   inversions: number;
-  lastComparedValue?: number;
+  activeLine: number;
+  currentPivot: number;
 };
 
 const INITIAL_SIZE = 20;
+
+const CODE_LINES = [
+  "function insertionSort(arr) {",
+  "  for (let i = 1; i < arr.length; i++) {",
+  "    let pivot = arr[i];",
+  "    let j = i - 1;",
+  "    while (j >= 0 && arr[j] > pivot) {",
+  "      arr[j + 1] = arr[j];",
+  "      j--;",
+  "    }",
+  "    arr[j + 1] = pivot;",
+  "  }",
+  "}"
+];
 
 export default function App() {
   const [history, setHistory] = useState<SortState[]>([]);
@@ -49,9 +65,11 @@ export default function App() {
   // UI States
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isConfigOverlayOpen, setIsConfigOverlayOpen] = useState(false);
+  const [isAllInversionsOpen, setIsAllInversionsOpen] = useState(false);
   const [isInversionMode, setIsInversionMode] = useState(false);
   const [isMetricsOpen, setIsMetricsOpen] = useState(true);
   const [isDetailsOpen, setIsDetailsOpen] = useState(true);
+  const [isCodeOpen, setIsCodeOpen] = useState(true);
 
   const timerRef = useRef<number | null>(null);
 
@@ -80,12 +98,13 @@ export default function App() {
       array: [...newArray],
       currentIndex: 1,
       compareIndex: 1,
-      pivotIndex: 1,
       isMoving: false,
       stepDescription: 'Ready to start sorting. Elements are placed in order one by one.',
       comparisons: 0,
       shifts: 0,
       inversions: countInversions(newArray),
+      activeLine: 1,
+      currentPivot: newArray[1] || 0,
     };
     setHistory([initialState]);
     setStep(0);
@@ -102,29 +121,34 @@ export default function App() {
   }, [generateRandomArray]);
 
   const calculateNextState = useCallback((state: SortState): SortState | null => {
-    const { array, currentIndex, compareIndex, comparisons, shifts } = state;
+    const { array, currentIndex, compareIndex, comparisons, shifts, currentPivot } = state;
     const newArray = [...array];
     
-    if (currentIndex >= array.length) return null;
+    if (currentIndex >= array.length) {
+      if (state.activeLine !== 11) {
+        return { ...state, activeLine: 11, stepDescription: 'Sorting complete.' };
+      }
+      return null;
+    }
 
     if (compareIndex === currentIndex) {
        const pivotValue = array[currentIndex];
        return {
          ...state,
          compareIndex: currentIndex - 1,
-         pivotIndex: currentIndex,
          isMoving: true,
-         stepDescription: `Current element to insert is ${pivotValue}. Comparing it with its left neighbors.`,
+         activeLine: 3,
+         currentPivot: pivotValue,
+         stepDescription: `Current element to insert is ${pivotValue}. Setting pivot and j = ${currentIndex - 1}.`,
        };
     }
 
     if (compareIndex >= 0) {
       const leftValue = newArray[compareIndex];
-      const pivotValue = newArray[compareIndex + 1];
       
-      if (leftValue > pivotValue) {
+      if (leftValue > currentPivot) {
         newArray[compareIndex + 1] = leftValue;
-        newArray[compareIndex] = pivotValue;
+        newArray[compareIndex] = currentPivot;
         
         return {
           ...state,
@@ -133,19 +157,18 @@ export default function App() {
           comparisons: comparisons + 1,
           shifts: shifts + 1,
           inversions: countInversions(newArray),
-          lastComparedValue: leftValue,
-          stepDescription: `${leftValue} is greater than ${pivotValue}, so we swap them.`,
+          activeLine: 6,
+          stepDescription: `${leftValue} is greater than pivot ${currentPivot}, so we shift it right.`,
         };
       } else {
         return {
           ...state,
           currentIndex: currentIndex + 1,
           compareIndex: currentIndex + 1,
-          pivotIndex: currentIndex + 1,
           isMoving: false,
           comparisons: comparisons + 1,
-          lastComparedValue: leftValue,
-          stepDescription: `${leftValue} is smaller than or equal to ${pivotValue}. Element ${pivotValue} is now in its sorted relative position.`,
+          activeLine: 9,
+          stepDescription: `${leftValue} is smaller than or equal to pivot ${currentPivot}. Found insertion point.`,
         };
       }
     } else {
@@ -153,9 +176,9 @@ export default function App() {
         ...state,
         currentIndex: currentIndex + 1,
         compareIndex: currentIndex + 1,
-        pivotIndex: currentIndex + 1,
         isMoving: false,
-        stepDescription: `Reached the start of the array. Element is in its relative sorted position.`,
+        activeLine: 9,
+        stepDescription: `Reached the start of the array. Element ${currentPivot} is placed at index 0.`,
       };
     }
   }, []);
@@ -224,6 +247,21 @@ export default function App() {
 
   const currentState = history[step];
 
+  const allInversionsMap = useMemo(() => {
+    if (!currentState) return new Map();
+    const map = new Map<number, { idx: number, val: number }[]>();
+    for (let i = 0; i < currentState.array.length; i++) {
+      const invs = [];
+      for (let j = i + 1; j < currentState.array.length; j++) {
+        if (currentState.array[i] > currentState.array[j]) {
+          invs.push({ idx: j, val: currentState.array[j] });
+        }
+      }
+      if (invs.length > 0) map.set(i, invs);
+    }
+    return map;
+  }, [currentState]);
+
   if (!currentState) {
     return (
       <div className="app-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#121212' }}>
@@ -232,7 +270,6 @@ export default function App() {
     );
   }
 
-  // Filter inversions to only show the ones involving the current pivot element (currentIndex)
   const allInversions = getInversions(currentState.array);
   const focusedInversions = allInversions.filter(
     ([i, j]) => i === currentState.currentIndex || j === currentState.currentIndex
@@ -256,12 +293,15 @@ export default function App() {
           <button className="btn" onClick={() => setIsConfigOverlayOpen(true)} title="Settings">
             <Settings size={20} />
           </button>
+          <button className="btn" onClick={() => setIsAllInversionsOpen(true)} title="All Inversions Matrix">
+            <Grid3X3 size={20} />
+          </button>
         </div>
         <div className="playback-btns">
           <button className="btn" onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} title={isSidebarCollapsed ? "Show Sidebar" : "Hide Sidebar"}>
             {isSidebarCollapsed ? <Maximize2 size={20} /> : <Minimize2 size={20} />}
           </button>
-          <button className="btn" onClick={() => setIsInversionMode(!isInversionMode)} title={isInversionMode ? "Hide Inversions" : "Show Inversions"}>
+          <button className="btn" onClick={() => setIsInversionMode(!isInversionMode)} title={isInversionMode ? "Hide HUD Inversions" : "Show HUD Inversions"}>
             {isInversionMode ? <EyeOff size={20} /> : <Eye size={20} />}
           </button>
           <button className="btn" onClick={() => generateRandomArray(arraySize)} title="Randomize">
@@ -327,7 +367,7 @@ export default function App() {
               let statusClass = '';
               if (isPivot) statusClass = 'active';
               else if (isComparing) {
-                const pivotValue = currentState.array[currentState.compareIndex + 1];
+                const pivotValue = currentState.currentPivot;
                 statusClass = val > pivotValue ? 'higher' : 'lower';
               } else if (idx < currentState.currentIndex) {
                 statusClass = 'sorted';
@@ -371,10 +411,10 @@ export default function App() {
               </button>
               
               <div className="jump-btns">
-                <button className="btn" onClick={nextStep} disabled={currentState.currentIndex >= currentState.array.length && !currentState.isMoving}>
+                <button className="btn" onClick={nextStep} disabled={currentState.activeLine === 11}>
                   <ChevronRight size={24} />
                 </button>
-                <button className="btn" onClick={jumpToEnd} disabled={currentState.currentIndex >= currentState.array.length && !currentState.isMoving} title="Jump to End">
+                <button className="btn" onClick={jumpToEnd} disabled={currentState.activeLine === 11} title="Jump to End">
                   <SkipForward size={20} />
                 </button>
               </div>
@@ -412,6 +452,44 @@ export default function App() {
 
         <aside className={`sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
           <div className="panel">
+            <div className="panel-header" onClick={() => setIsCodeOpen(!isCodeOpen)}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Code2 size={16} />
+                <h3>Source Code</h3>
+              </div>
+              {isCodeOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            </div>
+            <AnimatePresence>
+              {isCodeOpen && (
+                <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="panel-content">
+                  <div className="code-block">
+                    {CODE_LINES.map((line, idx) => (
+                      <div key={idx} className={`code-line ${currentState.activeLine === idx + 1 ? 'active' : ''}`}>
+                        <span style={{ opacity: 0.5, marginRight: 8, userSelect: 'none', display: 'inline-block', width: '20px' }}>{idx + 1}</span>
+                        {line}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="vars-display">
+                    <div className="var-item">
+                      <span className="var-name">i</span>
+                      <span className="var-val">{currentState.currentIndex < currentState.array.length ? currentState.currentIndex : '-'}</span>
+                    </div>
+                    <div className="var-item">
+                      <span className="var-name">j</span>
+                      <span className="var-val">{currentState.compareIndex !== currentState.currentIndex ? Math.max(-1, currentState.compareIndex) : '-'}</span>
+                    </div>
+                    <div className="var-item">
+                      <span className="var-name">pivot</span>
+                      <span className="var-val">{currentState.currentPivot ?? '-'}</span>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <div className="panel">
             <div className="panel-header" onClick={() => setIsMetricsOpen(!isMetricsOpen)}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Activity size={16} />
@@ -431,7 +509,7 @@ export default function App() {
                     <span className="metric-value">{currentState.shifts}</span>
                   </div>
                   <div className="metric-item">
-                    <span className="metric-label">Inversions</span>
+                    <span className="metric-label">Total Inversions</span>
                     <span className="metric-value">{currentState.inversions}</span>
                   </div>
                 </motion.div>
@@ -458,6 +536,52 @@ export default function App() {
         </aside>
       </main>
 
+      {/* All Inversions Matrix Overlay */}
+      <AnimatePresence>
+        {isAllInversionsOpen && (
+          <div className="overlay">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="overlay-panel"
+              style={{ width: '600px', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <Grid3X3 className="primary-text" size={24} color="var(--primary)" />
+                  <h2 style={{ fontSize: '1.5rem', fontWeight: 700 }}>ALL INVERSIONS</h2>
+                </div>
+                <button className="btn" onClick={() => setIsAllInversionsOpen(false)}><X size={24} /></button>
+              </div>
+              <div className="inversions-grid">
+                {allInversionsMap.size > 0 ? (
+                  Array.from(allInversionsMap.entries()).map(([i, invs]) => (
+                    <div key={i} className="inversion-row">
+                      <div className="inversion-row-header">
+                        Index {i} <span style={{ color: 'var(--on-surface-variant)', fontWeight: 400 }}>(Val: {currentState.array[i]})</span>
+                      </div>
+                      <div className="inversion-tags">
+                        {invs.map((inv: { idx: number; val: number }) => (
+                          <span key={inv.idx} className="inversion-tag">
+                            Idx {inv.idx} (Val: {inv.val})
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div style={{ padding: '24px', textAlign: 'center', color: 'var(--on-surface-variant)', fontStyle: 'italic', background: 'var(--surface-low)', borderRadius: 'var(--radius-md)' }}>
+                    No inversions found. The array is sorted!
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Configuration Overlay */}
       <AnimatePresence>
         {isConfigOverlayOpen && (
           <div className="overlay">
