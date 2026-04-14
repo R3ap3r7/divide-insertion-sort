@@ -189,8 +189,75 @@ body {
   cursor: pointer;
 }
 
-.preset-btn:hover {
+.scrubber-container {
+  flex: 2;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.scrubber {
+  flex: 1;
+  accent-color: var(--primary);
+  height: 6px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.array-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+  gap: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 12px;
+  background: var(--surface-low);
+  border-radius: var(--radius-md);
+}
+
+.array-input {
+  width: 100%;
+  background: var(--surface-high);
+  border: 1px solid var(--outline);
+  color: var(--on-surface);
+  padding: 4px;
+  text-align: center;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.array-input:focus {
+  border-color: var(--primary);
+  outline: none;
+}
+
+.size-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.size-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--outline);
+  background: var(--surface-low);
+  color: var(--on-surface);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+
+.size-btn:hover {
   background: var(--surface-highest);
+}
+
+.jump-btns {
+  display: flex;
+  gap: 4px;
 }
 
 .canvas-area {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Play, 
   Pause, 
@@ -16,7 +16,11 @@ import {
   X,
   Zap,
   Eye,
-  EyeOff
+  EyeOff,
+  SkipBack,
+  SkipForward,
+  Plus,
+  Minus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -36,12 +40,10 @@ type SortState = {
 const INITIAL_SIZE = 20;
 
 export default function App() {
-  const [array, setArray] = useState<number[]>([]);
   const [history, setHistory] = useState<SortState[]>([]);
   const [step, setStep] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [speedMultiplier, setSpeedMultiplier] = useState(1);
-  const [customInput, setCustomInput] = useState('');
   const [arraySize, setArraySize] = useState(INITIAL_SIZE);
   
   // UI States
@@ -85,7 +87,6 @@ export default function App() {
       shifts: 0,
       inversions: countInversions(newArray),
     };
-    setArray(newArray);
     setHistory([initialState]);
     setStep(0);
     setIsPlaying(false);
@@ -100,13 +101,12 @@ export default function App() {
     generateRandomArray(INITIAL_SIZE);
   }, [generateRandomArray]);
 
-  const calculateNextState = (state: SortState): SortState | null => {
+  const calculateNextState = useCallback((state: SortState): SortState | null => {
     const { array, currentIndex, compareIndex, comparisons, shifts } = state;
     const newArray = [...array];
     
     if (currentIndex >= array.length) return null;
 
-    // Case 1: Start new element insertion
     if (compareIndex === currentIndex) {
        const pivotValue = array[currentIndex];
        return {
@@ -118,13 +118,11 @@ export default function App() {
        };
     }
 
-    // Case 2: Comparison phase
     if (compareIndex >= 0) {
       const leftValue = newArray[compareIndex];
       const pivotValue = newArray[compareIndex + 1];
       
       if (leftValue > pivotValue) {
-        // Shift right
         newArray[compareIndex + 1] = leftValue;
         newArray[compareIndex] = pivotValue;
         
@@ -139,7 +137,6 @@ export default function App() {
           stepDescription: `${leftValue} is greater than ${pivotValue}, so we swap them.`,
         };
       } else {
-        // Found position
         return {
           ...state,
           currentIndex: currentIndex + 1,
@@ -152,7 +149,6 @@ export default function App() {
         };
       }
     } else {
-      // Reached the start
       return {
         ...state,
         currentIndex: currentIndex + 1,
@@ -162,7 +158,7 @@ export default function App() {
         stepDescription: `Reached the start of the array. Element is in its relative sorted position.`,
       };
     }
-  };
+  }, []);
 
   const nextStep = useCallback(() => {
     if (step >= history.length - 1) {
@@ -180,7 +176,7 @@ export default function App() {
       setStep(prev => prev + 1);
       return true;
     }
-  }, [step, history]);
+  }, [step, history, calculateNextState]);
 
   const prevStep = () => {
     if (step > 0) {
@@ -189,9 +185,30 @@ export default function App() {
     }
   };
 
+  const jumpToStart = () => {
+    setStep(0);
+    setIsPlaying(false);
+  };
+
+  const jumpToEnd = () => {
+    let currentHistory = [...history];
+    let currentState = currentHistory[currentHistory.length - 1];
+    
+    while (true) {
+      const next = calculateNextState(currentState);
+      if (!next) break;
+      currentHistory.push(next);
+      currentState = next;
+    }
+    
+    setHistory(currentHistory);
+    setStep(currentHistory.length - 1);
+    setIsPlaying(false);
+  };
+
   useEffect(() => {
     if (isPlaying) {
-      const baseSpeed = 1000;
+      const baseSpeed = 800;
       const delay = baseSpeed / speedMultiplier;
       timerRef.current = window.setInterval(() => {
         const hasNext = nextStep();
@@ -210,29 +227,28 @@ export default function App() {
   if (!currentState) {
     return (
       <div className="app-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#121212' }}>
-        <h2 style={{ color: '#3b82f6', fontSize: '1.5rem', fontWeight: 800 }}>divide.</h2>
+        <h2 style={{ color: '#3b82f6', fontSize: '1.5rem', fontWeight: 800 }}>DIVIDE.</h2>
       </div>
     );
   }
 
   const inversions = getInversions(currentState.array);
 
-  const handleCustomInput = (e: React.FormEvent) => {
-    e.preventDefault();
-    const parsed = customInput.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n));
-    if (parsed.length > 0) {
-      resetWithArray(parsed);
-      setIsConfigOverlayOpen(false);
-    }
+  const speedOptions = [0.5, 1, 2, 4, 8];
+
+  const handleArrayElementChange = (idx: number, val: number) => {
+    const newArr = [...currentState.array];
+    newArr[idx] = val;
+    resetWithArray(newArr);
   };
 
-  const speedOptions = [0.5, 1, 2, 4];
+  const progressPercentage = Math.round((currentState.currentIndex / currentState.array.length) * 100);
 
   return (
     <div className="app-container">
       <header className="header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <h1>divide<span>.</span></h1>
+          <h1 style={{ textTransform: 'uppercase' }}>DIVIDE<span>.</span></h1>
           <button className="btn" onClick={() => setIsConfigOverlayOpen(true)} title="Settings">
             <Settings size={20} />
           </button>
@@ -256,16 +272,17 @@ export default function App() {
       <main className="main-layout">
         <section className="viz-canvas">
           {isInversionMode && (
-            <svg className="inversion-canvas">
+            <svg className="inversion-canvas" style={{ zIndex: 10 }}>
               {inversions.map(([i, j], idx) => {
-                const x1 = (i / currentState.array.length) * 100;
-                const x2 = (j / currentState.array.length) * 100;
+                const stepX = 100 / currentState.array.length;
+                const x1 = (i * stepX) + (stepX / 2);
+                const x2 = (j * stepX) + (stepX / 2);
                 return (
                   <motion.path
                     key={`inv-${idx}`}
                     initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: 0.3 }}
-                    d={`M ${x1 + 2.5}% 50 Q ${(x1 + x2) / 2 + 2.5}% 10 ${x2 + 2.5}% 50`}
+                    animate={{ pathLength: 1, opacity: 0.5 }}
+                    d={`M ${x1}% 85 Q ${(x1 + x2) / 2}% 20 ${x2}% 85`}
                     fill="none"
                     stroke="var(--primary)"
                     strokeWidth="2"
@@ -284,7 +301,6 @@ export default function App() {
               let statusClass = '';
               if (isPivot) statusClass = 'active';
               else if (isComparing) {
-                // Determine if it's higher or lower than the pivot
                 const pivotValue = currentState.array[currentState.compareIndex + 1];
                 statusClass = val > pivotValue ? 'higher' : 'lower';
               } else if (idx < currentState.currentIndex) {
@@ -297,7 +313,7 @@ export default function App() {
                   layout
                   className={`bar ${statusClass}`}
                   style={{ 
-                    height: `${(val / Math.max(...currentState.array)) * 80 + 10}%`,
+                    height: `${(val / Math.max(...currentState.array, 1)) * 70 + 10}%`,
                   }}
                 >
                   <span style={{ 
@@ -315,15 +331,38 @@ export default function App() {
 
           <div className="controls-bar">
             <div className="playback-btns">
-              <button className="btn" onClick={prevStep} disabled={step === 0}>
-                <ChevronLeft size={24} />
-              </button>
+              <div className="jump-btns">
+                <button className="btn" onClick={jumpToStart} disabled={step === 0} title="Jump to Start">
+                  <SkipBack size={20} />
+                </button>
+                <button className="btn" onClick={prevStep} disabled={step === 0}>
+                  <ChevronLeft size={24} />
+                </button>
+              </div>
+              
               <button className="btn btn-primary" onClick={() => setIsPlaying(!isPlaying)}>
                 {isPlaying ? <Pause size={24} fill="currentColor" /> : <Play size={24} fill="currentColor" />}
               </button>
-              <button className="btn" onClick={nextStep} disabled={currentState.currentIndex >= currentState.array.length && !currentState.isMoving}>
-                <ChevronRight size={24} />
-              </button>
+              
+              <div className="jump-btns">
+                <button className="btn" onClick={nextStep} disabled={currentState.currentIndex >= currentState.array.length && !currentState.isMoving}>
+                  <ChevronRight size={24} />
+                </button>
+                <button className="btn" onClick={jumpToEnd} disabled={currentState.currentIndex >= currentState.array.length && !currentState.isMoving} title="Jump to End">
+                  <SkipForward size={20} />
+                </button>
+              </div>
+            </div>
+
+            <div className="scrubber-container">
+              <input 
+                type="range" 
+                className="scrubber"
+                min="0"
+                max={history.length - 1}
+                value={step}
+                onChange={(e) => setStep(parseInt(e.target.value))}
+              />
             </div>
 
             <div className="speed-presets">
@@ -338,15 +377,14 @@ export default function App() {
               ))}
             </div>
 
-            <div className="metric-item" style={{ gap: '12px' }}>
+            <div className="metric-item" style={{ gap: '12px', minWidth: '80px' }}>
               <span className="metric-label">Progress</span>
-              <span className="metric-value">{Math.round((step / (history.length + 10)) * 100)}%</span>
+              <span className="metric-value">{progressPercentage}%</span>
             </div>
           </div>
         </section>
 
         <aside className={`sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
-          {/* Metrics Panel */}
           <div className="panel">
             <div className="panel-header" onClick={() => setIsMetricsOpen(!isMetricsOpen)}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -357,12 +395,7 @@ export default function App() {
             </div>
             <AnimatePresence>
               {isMetricsOpen && (
-                <motion.div 
-                  initial={{ height: 0 }} 
-                  animate={{ height: 'auto' }} 
-                  exit={{ height: 0 }}
-                  className="panel-content"
-                >
+                <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="panel-content">
                   <div className="metric-item">
                     <span className="metric-label">Comparisons</span>
                     <span className="metric-value">{currentState.comparisons}</span>
@@ -380,7 +413,6 @@ export default function App() {
             </AnimatePresence>
           </div>
 
-          {/* Explanation Panel */}
           <div className="panel">
             <div className="panel-header" onClick={() => setIsDetailsOpen(!isDetailsOpen)}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -391,18 +423,8 @@ export default function App() {
             </div>
             <AnimatePresence>
               {isDetailsOpen && (
-                <motion.div 
-                  initial={{ height: 0 }} 
-                  animate={{ height: 'auto' }} 
-                  exit={{ height: 0 }}
-                  className="panel-content"
-                >
-                  <p className="step-explanation">
-                    {currentState.stepDescription}
-                  </p>
-                  <div style={{ marginTop: 12, fontSize: '12px', opacity: 0.6 }}>
-                    <strong>Insight:</strong> Insertion sort is efficient for small datasets or nearly sorted arrays.
-                  </div>
+                <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="panel-content">
+                  <p className="step-explanation">{currentState.stepDescription}</p>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -410,7 +432,6 @@ export default function App() {
         </aside>
       </main>
 
-      {/* Configuration Overlay */}
       <AnimatePresence>
         {isConfigOverlayOpen && (
           <div className="overlay">
@@ -419,50 +440,46 @@ export default function App() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               className="overlay-panel"
+              style={{ width: '700px', maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <Zap className="primary-text" size={24} color="var(--primary)" />
-                  <h2 style={{ fontSize: '1.5rem', fontWeight: 700 }}>Configure</h2>
+                  <h2 style={{ fontSize: '1.5rem', fontWeight: 700 }}>DIVIDE CONFIG</h2>
                 </div>
-                <button className="btn" onClick={() => setIsConfigOverlayOpen(false)}>
-                  <X size={24} />
-                </button>
+                <button className="btn" onClick={() => setIsConfigOverlayOpen(false)}><X size={24} /></button>
               </div>
 
               <div className="input-group">
                 <label>Array Size: {arraySize}</label>
-                <div className="preset-buttons">
-                  {[10, 20, 30, 40, 50].map(s => (
-                    <button 
-                      key={s} 
-                      className={`preset-btn ${arraySize === s ? 'active' : ''}`}
-                      onClick={() => {
-                        setArraySize(s);
-                        generateRandomArray(s);
-                      }}
-                      style={arraySize === s ? { borderColor: 'var(--primary)', color: 'var(--primary)' } : {}}
-                    >
-                      {s} items
-                    </button>
+                <div className="size-controls">
+                  <button className="size-btn" onClick={() => { setArraySize(Math.max(2, arraySize - 1)); generateRandomArray(Math.max(2, arraySize - 1)); }}><Minus size={16} /></button>
+                  <span style={{ fontSize: '1.2rem', fontWeight: 700 }}>{arraySize}</span>
+                  <button className="size-btn" onClick={() => { setArraySize(Math.min(100, arraySize + 1)); generateRandomArray(Math.min(100, arraySize + 1)); }}><Plus size={16} /></button>
+                </div>
+              </div>
+
+              <div className="input-group" style={{ flex: 1, minHeight: 0 }}>
+                <label>Manual Entry (Edit individual elements)</label>
+                <div className="array-edit-grid">
+                  {currentState.array.map((val, idx) => (
+                    <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <span style={{ fontSize: '10px', opacity: 0.5, textAlign: 'center' }}>#{idx}</span>
+                      <input 
+                        type="number" 
+                        className="array-input" 
+                        value={val} 
+                        onChange={(e) => handleArrayElementChange(idx, parseInt(e.target.value) || 0)}
+                      />
+                    </div>
                   ))}
                 </div>
               </div>
 
-              <form className="input-group" onSubmit={handleCustomInput}>
-                <label>Custom Data Set</label>
-                <input 
-                  type="text" 
-                  placeholder="Enter numbers separated by commas (e.g. 5, 2, 9, 1)" 
-                  value={customInput}
-                  onChange={(e) => setCustomInput(e.target.value)}
-                  autoFocus
-                />
-                <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
-                  <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Apply Custom Array</button>
-                  <button type="button" className="btn" style={{ flex: 1, background: 'var(--surface-low)' }} onClick={() => generateRandomArray(arraySize)}>Randomize Current Size</button>
-                </div>
-              </form>
+              <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
+                <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setIsConfigOverlayOpen(false)}>Close and Preview</button>
+                <button className="btn" style={{ flex: 1, background: 'var(--surface-low)' }} onClick={() => generateRandomArray(arraySize)}>Regenerate Random</button>
+              </div>
             </motion.div>
           </div>
         )}
