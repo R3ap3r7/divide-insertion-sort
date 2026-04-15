@@ -624,7 +624,7 @@ export default function App() {
                 </div>
                 <button className="btn" onClick={() => setIsInversionMode(false)}><X size={24} /></button>
               </div>
-              <div style={{ flex: 1, position: 'relative', minHeight: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ flex: 1, position: 'relative', minHeight: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 20px' }}>
                 <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 0 }}>
                   {allInversions.map(([i, j], idx) => {
                     const len = currentState.array.length;
@@ -637,30 +637,30 @@ export default function App() {
                         key={`inv-overlay-${i}-${j}-${idx}`}
                         initial={{ pathLength: 0, opacity: 0 }}
                         animate={{ pathLength: 1, opacity: 0.6 }}
-                        d={`M ${x1} 60 Q ${(x1 + x2) / 2} 0 ${x2} 60`}
-                        stroke="rgba(239, 68, 68, 0.4)"
-                        strokeWidth="0.5"
+                        d={`M ${x1} 50 Q ${(x1 + x2) / 2} 10 ${x2} 50`}
+                        stroke="rgba(239, 68, 68, 0.5)"
+                        strokeWidth="0.3"
                         fill="none"
                         vectorEffect="non-scaling-stroke"
                       />
                     );
                   })}
                 </svg>
-                <div style={{ display: 'flex', width: '100%', justifyContent: 'space-between', zIndex: 1, position: 'relative' }}>
+                <div style={{ display: 'flex', width: '100%', zIndex: 1, position: 'relative' }}>
                   {currentState.array.map((val, idx) => (
                     <div key={idx} style={{ 
                       flex: 1, 
                       display: 'flex', 
                       justifyContent: 'center', 
                       alignItems: 'center', 
-                      padding: '8px 0',
+                      padding: '12px 0',
                       background: 'var(--surface-high)',
-                      margin: '0 2px',
-                      borderRadius: '4px',
                       border: '1px solid var(--outline)',
                       fontSize: '12px',
                       fontWeight: 'bold',
-                      color: 'var(--on-surface)'
+                      color: 'var(--on-surface)',
+                      height: '44px',
+                      borderRadius: '4px'
                     }}>
                       {val}
                     </div>
